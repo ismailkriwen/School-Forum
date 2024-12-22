@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  Admin
+  Teacher
+  Student
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.String
+  access_token      String? @db.String
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.String
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  name     String?
+  email    String? @unique
+  image    String?
+  bio      String?
+  location String?
+  gender   String?
+  password String?
+  role     Role    @default(Student)
+  groups   Role[]  @default([Student])
+  private  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  posts         Post[]
+  likes         Like[]
+  messages      Message[]
+  notifications Notification[]
+}
+
+model Category {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  name        String? @unique
+  description String?
+  color       String? @default("#000")
+  ranks       Role[]  @default([Student])
+  order       Int     @default(1)
+
+  topics Topic[]
+}
+
+model Topic {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  title  String
+  pinned Boolean @default(false)
+
+  categoryId String   @db.ObjectId
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  posts Post[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  content String
+  reply   Boolean @default(false)
+  postId  String? @db.ObjectId
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  topicId String @db.ObjectId
+  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  hidden   Boolean?  @default(false)
+  hiddenBy String?   @db.ObjectId
+  hiddenAt DateTime? @default(now())
+
+  likes Like[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Like {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  postId String @db.ObjectId
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Conversation {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  title    String
+  creator  String // email
+  receiver String // email
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  content String
+
+  conversationId String       @db.ObjectId
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  seen    Boolean @default(false)
+  type    String
+  from    String?
+  post    String? @db.ObjectId
+  content String?
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
